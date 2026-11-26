@@ -1,11 +1,21 @@
 # Baga Heading Card
 
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
+[![Release](https://img.shields.io/github/v/release/ilbagatta/baga-heading-card)](https://github.com/ilbagatta/baga-heading-card/releases)
+[![License](https://img.shields.io/github/license/ilbagatta/baga-heading-card)](LICENSE)
+
 Card Lovelace di intestazione: icona + titolo, badge rotondi colorati per lo stato delle entità e badge allungati con il valore per i sensori.
 Tocco su un badge → dettagli dell'entità; tocco sul resto dell'intestazione → `tap_action` (o `navigation_path`).
 
 ## Installazione
 
 ### HACS
+
+[![Apri la repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ilbagatta&repository=baga-heading-card&category=plugin)
+
+Il pulsante apre HACS sulla tua istanza di Home Assistant e aggiunge la repository; poi premi **Scarica** e ricarica il browser.
+
+In alternativa, a mano:
 1. HACS → menu ⋮ → *Repository personalizzati* → `https://github.com/ilbagatta/baga-heading-card`, tipo **Dashboard**.
 2. Installa *Baga Heading Card* e ricarica il browser.
 

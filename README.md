@@ -62,6 +62,38 @@ anche dall'editor visuale: le card interne hanno l'editor nativo di HA (una tab 
 duplica, elimina, editor di codice). Le card interne rispettano `visibility:` (condizioni `state`, `numeric_state`, `screen`, `user`, `and`, `or`, `not`)
 e `grid_options: { columns: full }` per occupare tutta la riga.
 
+### Lista di stanze (`layout: list`)
+
+Con `layout: list` la card è un contenitore sempre aperto: le `baga-heading-card` messe in `cards:` diventano righe di un
+unico riquadro, separate da linee sottili, e ognuna si apre sotto la propria riga. Titolo, icona e badge del contenitore
+sono facoltativi: se mancano non c'è intestazione.
+
+```yaml
+type: custom:baga-heading-card
+layout: list
+cards:
+  - type: custom:baga-heading-card
+    title: Cucina
+    icon: mdi:countertop
+    auto_close: 60
+    entities:
+      - light.cucina
+    cards:
+      - type: tile
+        entity: light.cucina
+  - type: custom:baga-heading-card
+    title: Soggiorno
+    icon: mdi:sofa
+    auto_close: 60
+    columns: 2
+    entities:
+      - light.soggiorno
+      - sensor.temperatura_soggiorno
+    cards:
+      - type: tile
+        entity: light.soggiorno
+```
+
 ## Licenza
 
 GPL-3.0

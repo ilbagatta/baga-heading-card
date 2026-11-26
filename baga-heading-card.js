@@ -23,6 +23,8 @@
  *       entity: light.x                  # con entity, lo stato aperto segue quell'entità
  *   columns: 2                           # opzionale: colonne delle card interne (default 1)
  *   expanded: true                       # opzionale: aperta all'avvio (solo senza entità di toggle)
+ *   layout: list                         # opzionale: contenitore a lista sempre aperto; le baga-heading-card
+ *                                        # in cards: diventano righe di un unico riquadro, separate da linee
  *   auto_close: 60                       # opzionale: si richiude da sola dopo N secondi senza tocchi
  *                                        # all'interno (solo senza entità di toggle)
  *
@@ -77,6 +79,7 @@ class BagaHeadingCard extends HTMLElement {
     this._tap = t && t.action && t.action !== "none" ? { ...t, entity: t.entity || config.entity } : null;
     this._toggleEnt = this._tap && this._tap.action === "toggle" && this._tap.entity ? this._tap.entity : null;
     this._cards = config.cards && config.cards.length ? config.cards : null;
+    this._list = config.layout === "list";
     this._localOpen = !!config.expanded;
     this._autoClose = Math.max(0, Number(config.auto_close) || 0);
     clearTimeout(this._closeTimer);
@@ -106,12 +109,15 @@ class BagaHeadingCard extends HTMLElement {
   _build() {
     const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const c = this._config;
-    const clickable = !!(this._tap || this._cards);
-    const cols = Math.max(1, Math.min(6, parseInt(c.columns, 10) || 1));
+    const list = this._list;
+    const clickable = !!(this._tap || (this._cards && !list));
+    const cols = list ? 1 : Math.max(1, Math.min(6, parseInt(c.columns, 10) || 1));
+    // nella lista l'intestazione c'è solo se ha qualcosa da mostrare
+    const hasHead = !list || !!(c.title || c.icon || this._items.length);
     this.innerHTML = `
-      <ha-card class="${this._cards ? "hasbody" : ""}">
+      <ha-card class="bhc${this._cards ? " hasbody" : ""}${list ? " list" : ""}">
         <style>
-          .head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 48px;
+          .head { display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 16px; min-height: 52px;
                   box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; outline: none;
                   border-radius: var(--ha-card-border-radius, 12px);
                   transition: background-color .2s, box-shadow .2s, border-radius .2s; }
@@ -130,7 +136,7 @@ class BagaHeadingCard extends HTMLElement {
           .inner.shown { overflow: visible; }
           ha-card:not(.open) .inner { visibility: hidden; transition: visibility 0s .25s; }
           /* pannello rientrato rispetto ai bordi: le card sembrano "dentro" la stanza */
-          .kids { display: grid; grid-template-columns: repeat(${cols}, minmax(0, 1fr)); gap: 8px;
+          .kids { display: grid; gap: 8px;
                   margin: 10px; padding: 8px;
                   border-radius: calc(var(--ha-card-border-radius, 12px) - 2px);
                   background: color-mix(in srgb, var(--primary-color) 6%, transparent);
@@ -139,7 +145,7 @@ class BagaHeadingCard extends HTMLElement {
           .head.nav { cursor: pointer; }
           .head:focus-visible { box-shadow: inset 0 0 0 2px var(--primary-color); border-radius: var(--ha-card-border-radius, 12px); }
           .hicon { flex: 0 0 auto; color: var(--primary-text-color); --mdc-icon-size: 24px; }
-          .title { flex: 1 1 auto; min-width: 0; font-size: 1.25em; font-weight: 500;
+          .title { flex: 1 1 auto; min-width: 0; font-size: 1.1em; font-weight: 500;
                    color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; flex: 0 1 auto; }
           .badge { --tone: var(--disabled-text-color, var(--secondary-text-color));
@@ -152,31 +158,59 @@ class BagaHeadingCard extends HTMLElement {
           .badge.pill { padding: 0 9px 0 6px; --tone: var(--primary-text-color);
                         background: color-mix(in srgb, var(--secondary-text-color) 12%, transparent); }
           .badge.unav { opacity: .45; }
+          /* badge spenti più discreti: risaltano solo quelli accesi */
+          .badge.off { opacity: .6; background: color-mix(in srgb, var(--tone) 8%, transparent); }
           .val:empty { display: none; }
-          .chev { flex: 0 0 auto; width: 8px; height: 8px; margin: 0 6px 0 0;
+          .chev { flex: 0 0 auto; width: 7px; height: 7px; margin: 0 6px 0 2px; opacity: .55;
                   border-right: 2px solid var(--secondary-text-color); border-bottom: 2px solid var(--secondary-text-color);
-                  transform: rotate(-45deg); transition: transform .2s; }
-          .chev.open { transform: rotate(45deg); }
+                  transform: rotate(-45deg); transition: transform .2s, opacity .2s; }
+          .chev.open { transform: rotate(45deg); opacity: 1; }
+          /* layout: list — un solo riquadro, righe separate da linee sottili */
+          ha-card.list > .wrap > .inner > .kids { gap: 0; margin: 0; padding: 0; background: none; box-shadow: none;
+                  border-radius: 0; }
+          ha-card.list > .head + .wrap > .inner > .kids { border-top: 1px solid var(--divider-color); }
+          ha-card.list > .wrap > .inner > .kids > * + * { border-top: 1px solid var(--divider-color); }
+          ha-card.list > .wrap > .inner > .kids > baga-heading-card > ha-card {
+                  background: none; border: none; box-shadow: none; border-radius: 0; }
+          ha-card.list > .wrap > .inner > .kids > baga-heading-card > ha-card > .head { border-radius: 0; }
+          ha-card.list > .wrap > .inner > .kids > baga-heading-card:first-child > ha-card > .head {
+                  border-top-left-radius: var(--ha-card-border-radius, 12px);
+                  border-top-right-radius: var(--ha-card-border-radius, 12px); }
+          ha-card.list > .head + .wrap > .inner > .kids > baga-heading-card:first-child > ha-card > .head {
+                  border-top-left-radius: 0; border-top-right-radius: 0; }
+          ha-card.list > .wrap > .inner > .kids > baga-heading-card:last-child > ha-card > .head:not(.open) {
+                  border-bottom-left-radius: var(--ha-card-border-radius, 12px);
+                  border-bottom-right-radius: var(--ha-card-border-radius, 12px); }
         </style>
-        <div class="head${clickable ? " nav" : ""}" ${clickable ? 'role="button" tabindex="0"' : ""}>
+        ${hasHead ? `<div class="head${clickable ? " nav" : ""}" ${clickable ? 'role="button" tabindex="0"' : ""}>
           ${c.icon ? `<ha-icon class="hicon" icon="${esc(c.icon)}"></ha-icon>` : ""}
           <div class="title">${esc(c.title)}</div>
           <div class="badges">
             ${this._items.map((_, i) => `<div class="badge" data-i="${i}"><ha-state-icon></ha-state-icon><span class="val"></span></div>`).join("")}
           </div>
           ${clickable ? '<div class="chev"></div>' : ""}
-        </div>
-        ${this._cards ? '<div class="wrap"><div class="inner"><div class="kids"></div></div></div>' : ""}
+        </div>` : ""}
+        ${this._cards ? `<div class="wrap"><div class="inner"><div class="kids${list ? " lst" : ""}"
+          style="grid-template-columns: repeat(${cols}, minmax(0, 1fr))"></div></div></div>` : ""}
       </ha-card>`;
 
-    const head = this.querySelector(".head");
+    const card = this.firstElementChild;
+    const own = sel => [...card.children].find(e => e.matches(sel)) || null;
+    const head = own(".head");
+    const wrap = own(".wrap");
+    this._el = {
+      card, head, wrap,
+      chev: head && head.querySelector(".chev"),
+      inner: wrap && wrap.firstElementChild,
+      kids: wrap && wrap.firstElementChild.firstElementChild,
+      badges: head ? [...head.querySelectorAll(".badge")] : [],
+    };
     if (clickable) {
       head.addEventListener("click", () => this._onHead());
       head.addEventListener("keydown", ev => {
         if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); this._onHead(); }
       });
     }
-    const wrap = this.querySelector(".wrap");
     if (wrap && this._autoClose && !this._toggleEnt) {
       // ogni tocco dentro le card interne fa ripartire il conto alla rovescia
       for (const ev of ["pointerdown", "keydown", "wheel"]) wrap.addEventListener(ev, () => this._armClose(), { passive: true });
@@ -184,10 +218,10 @@ class BagaHeadingCard extends HTMLElement {
     if (wrap) {
       // a fine apertura il contenuto può uscire dai bordi (menu, tooltip delle tile)
       wrap.addEventListener("transitionend", ev => {
-        if (ev.target === wrap && this._open) this.querySelector(".inner").classList.add("shown");
+        if (ev.target === wrap && this._open) this._el.inner.classList.add("shown");
       });
     }
-    this.querySelectorAll(".badge").forEach(b => {
+    this._el.badges.forEach(b => {
       b.addEventListener("click", ev => {
         ev.stopPropagation();
         const it = this._items[+b.dataset.i];
@@ -199,13 +233,14 @@ class BagaHeadingCard extends HTMLElement {
 
   _onHead() {
     // con le card interne e senza entità di toggle l'apertura è locale (altre tap_action ignorate)
-    if (this._cards && !this._toggleEnt) {
+    if (this._cards && !this._toggleEnt && !this._list) {
       this._localOpen = !this._localOpen;
       this._applyOpen();
     } else this._runTap();
   }
 
   _isOpen() {
+    if (this._list) return !!this._cards;   // la lista è sempre aperta
     if (this._toggleEnt) {
       const st = this._hass && this._hass.states[this._toggleEnt];
       return !!st && st.state === "on";
@@ -218,20 +253,20 @@ class BagaHeadingCard extends HTMLElement {
     if (open === this._open) return;
     this._open = open;
     if (open) this._armClose(); else clearTimeout(this._closeTimer);
-    const card = this.querySelector("ha-card");
-    const head = this.querySelector(".head");
+    const { card, head, chev, inner } = this._el;
     card.classList.toggle("open", open);
-    head.classList.toggle("open", open);
-    this.querySelector(".chev")?.classList.toggle("open", open);
-    if (head.hasAttribute("role")) head.setAttribute("aria-expanded", String(open));
-    const inner = this.querySelector(".inner");
-    if (inner && !open) inner.classList.remove("shown");
+    if (head && !this._list) {
+      head.classList.toggle("open", open);
+      if (head.hasAttribute("role")) head.setAttribute("aria-expanded", String(open));
+    }
+    if (chev) chev.classList.toggle("open", open);
+    if (inner) inner.classList.toggle("shown", open && this._list);
     if (open && this._cards && !this._kids) this._makeKids();
   }
 
   _armClose() {
     clearTimeout(this._closeTimer);
-    if (!this._autoClose || this._toggleEnt || !this._open) return;
+    if (!this._autoClose || this._toggleEnt || this._list || !this._open) return;
     this._closeTimer = setTimeout(() => {
       this._localOpen = false;
       this._applyOpen();
@@ -248,7 +283,7 @@ class BagaHeadingCard extends HTMLElement {
     let helpers;
     try { helpers = await window.loadCardHelpers(); } catch (e) { this._kids = null; return; }
     if (gen !== this._gen) return;   // configurazione cambiata nel frattempo
-    const box = this.querySelector(".kids");
+    const box = this._el.kids;
     const make = (cc, i) => {
       const { visibility, ...conf } = cc;
       const el = helpers.createCardElement(conf);
@@ -292,7 +327,7 @@ class BagaHeadingCard extends HTMLElement {
     if (!this._built) return;
     this._applyOpen();
     this._items.forEach((it, i) => {
-      const b = this.querySelector(`.badge[data-i="${i}"]`);
+      const b = this._el.badges[i];
       const st = this._hass.states[it.entity];
       const domain = it.entity.split(".")[0];
       const showState = it.show_state ?? domain === "sensor";
@@ -306,6 +341,7 @@ class BagaHeadingCard extends HTMLElement {
 
       b.classList.toggle("pill", showState);
       b.classList.toggle("unav", unav);
+      b.classList.toggle("off", !showState && !on && !unav);
       b.style.display = it.hide_inactive && !on ? "none" : "";
       if (!showState) {
         b.style.setProperty("--tone", on
@@ -349,6 +385,10 @@ const EDITOR_SCHEMA = [
   {
     name: "opening", type: "expandable", flatten: true, title: "Apertura delle card interne",
     schema: [
+      { name: "layout", selector: { select: { mode: "dropdown", options: [
+        { value: "collapsible", label: "Intestazione richiudibile" },
+        { value: "list", label: "Lista sempre aperta (raggruppa più stanze)" },
+      ] } } },
       { name: "columns", selector: { number: { min: 1, max: 6, mode: "box" } } },
       { name: "auto_close", selector: { number: { min: 0, max: 3600, step: 5, mode: "box", unit_of_measurement: "s" } } },
       { name: "expanded", selector: { boolean: {} } },
@@ -366,6 +406,7 @@ const EDITOR_LABELS = {
   title: "Titolo",
   icon: "Icona",
   entities: "Badge",
+  layout: "Tipo",
   columns: "Colonne",
   auto_close: "Chiudi da sola dopo N secondi senza tocchi (0 = mai)",
   expanded: "Aperta all'avvio",
@@ -373,6 +414,7 @@ const EDITOR_LABELS = {
   entity: "Entità della scheda (per toggle / dettagli al tocco)",
 };
 const EDITOR_HELPERS = {
+  layout: "Lista: aggiungi nelle card interne una Baga Heading per stanza; diventano righe di un unico riquadro.",
   tap_action: "Con le card interne lascia vuoto: il tocco apre e chiude. Con 'toggle' su un input_boolean lo stato "
     + "aperto segue quell'entità (condiviso tra dispositivi; chiusura automatica e 'aperta all'avvio' non valgono).",
 };
@@ -388,6 +430,7 @@ class BagaHeadingCardEditor extends HTMLElement {
       delete c.tap_action.entity;
     }
     c.entities = (c.entities || []).map(e => (typeof e === "string" ? { entity: e } : e));
+    if (!c.layout) c.layout = "collapsible";
     this._config = c;
     this._render();
   }
@@ -470,6 +513,7 @@ class BagaHeadingCardEditor extends HTMLElement {
     for (const k of ["title", "icon", "entity", "tap_action", "columns"]) if (c[k] === "" || c[k] == null) delete c[k];
     if (!c.expanded) delete c.expanded;
     if (!c.auto_close) delete c.auto_close;
+    if (c.layout !== "list") delete c.layout;
     if (!Array.isArray(c.cards) || !c.cards.length) delete c.cards;
     c.entities = (c.entities || []).filter(e => e && e.entity).map(e => {
       const o = {};

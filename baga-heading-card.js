@@ -131,7 +131,7 @@ class BagaHeadingCard extends HTMLElement {
           ha-card:not(.open) .inner { visibility: hidden; transition: visibility 0s .25s; }
           /* pannello rientrato rispetto ai bordi: le card sembrano "dentro" la stanza */
           .kids { display: grid; grid-template-columns: repeat(${cols}, minmax(0, 1fr)); gap: 8px;
-                  margin: 10px 10px 10px 22px; padding: 8px;
+                  margin: 10px; padding: 8px;
                   border-radius: calc(var(--ha-card-border-radius, 12px) - 2px);
                   background: color-mix(in srgb, var(--primary-color) 6%, transparent);
                   box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary-color) 45%, transparent);

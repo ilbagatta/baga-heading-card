@@ -58,8 +58,9 @@ cards:
 ```
 
 Con `cards:` le `tap_action` diverse da `toggle` vengono ignorate: il tocco serve ad aprire e chiudere. Tutto si configura
-anche dall'editor visuale: le card interne hanno l'editor nativo di HA (una tab per card, **+** per aggiungerne, sposta,
-duplica, elimina, editor di codice). Le card interne rispettano `visibility:` (condizioni `state`, `numeric_state`, `screen`, `user`, `and`, `or`, `not`)
+anche dall'editor visuale, comodo anche da smartphone: le card interne sono un elenco con i loro nomi; tocchi una riga
+per modificarla (barra **←** in alto per tornare indietro), il menu **⋮** sposta, duplica, mette a riga intera o elimina,
+**+ Aggiungi** crea un riquadro scegliendo solo l'entità, una stanza o qualsiasi altra card. Le card interne rispettano `visibility:` (condizioni `state`, `numeric_state`, `screen`, `user`, `and`, `or`, `not`)
 e `grid_options: { columns: full }` per occupare tutta la riga.
 
 ### Lista di stanze (`layout: list`)

@@ -31,7 +31,7 @@ entities:
 ```
 
 Con `tap_action: toggle` la freccia a destra ruota quando l'entità è `on` e l'intestazione si evidenzia (tinta e barra d'accento).
-La card si configura anche dall'editor visuale.
+La card si configura tutta anche dall'editor visuale.
 
 ### Card interne richiudibili
 
@@ -46,6 +46,7 @@ entities:
   - sensor.temperatura_soggiorno
 columns: 2                          # opzionale, default 1
 expanded: false                     # opzionale: aperta all'avvio
+auto_close: 60                      # opzionale: si richiude dopo 60 s senza tocchi all'interno
 # entity: input_boolean.soggiorno   # opzionale, con tap_action: toggle lo stato aperto segue l'entità
 # tap_action:                       #   (condiviso tra dispositivi); senza, l'apertura è locale
 #   action: toggle
@@ -56,8 +57,9 @@ cards:
     entity: light.veranda
 ```
 
-Con `cards:` le `tap_action` diverse da `toggle` vengono ignorate: il tocco serve ad aprire e chiudere. Le card interne si
-configurano solo in YAML; rispettano `visibility:` (condizioni `state`, `numeric_state`, `screen`, `user`, `and`, `or`, `not`)
+Con `cards:` le `tap_action` diverse da `toggle` vengono ignorate: il tocco serve ad aprire e chiudere. Tutto si configura
+anche dall'editor visuale: le card interne hanno l'editor nativo di HA (una tab per card, **+** per aggiungerne, sposta,
+duplica, elimina, editor di codice). Le card interne rispettano `visibility:` (condizioni `state`, `numeric_state`, `screen`, `user`, `and`, `or`, `not`)
 e `grid_options: { columns: full }` per occupare tutta la riga.
 
 ## Licenza

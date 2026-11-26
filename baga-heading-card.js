@@ -23,8 +23,10 @@
  *       entity: light.x                  # con entity, lo stato aperto segue quell'entità
  *   columns: 2                           # opzionale: colonne delle card interne (default 1)
  *   expanded: true                       # opzionale: aperta all'avvio (solo senza entità di toggle)
+ *   auto_close: 60                       # opzionale: si richiude da sola dopo N secondi senza tocchi
+ *                                        # all'interno (solo senza entità di toggle)
  *
- * Configurabile anche dall'editor visuale della scheda (le card interne solo da YAML).
+ * Tutto configurabile anche dall'editor visuale della scheda, card interne comprese.
  */
 const ACTIVE = ["on", "open", "playing", "heat", "cool", "heat_cool"];
 
@@ -76,6 +78,8 @@ class BagaHeadingCard extends HTMLElement {
     this._toggleEnt = this._tap && this._tap.action === "toggle" && this._tap.entity ? this._tap.entity : null;
     this._cards = config.cards && config.cards.length ? config.cards : null;
     this._localOpen = !!config.expanded;
+    this._autoClose = Math.max(0, Number(config.auto_close) || 0);
+    clearTimeout(this._closeTimer);
     this._open = undefined;
     this._kids = null;
     this._gen = (this._gen || 0) + 1;
@@ -125,11 +129,12 @@ class BagaHeadingCard extends HTMLElement {
           .inner { min-height: 0; overflow: hidden; }
           .inner.shown { overflow: visible; }
           ha-card:not(.open) .inner { visibility: hidden; transition: visibility 0s .25s; }
-          .kids { display: grid; grid-template-columns: repeat(${cols}, minmax(0, 1fr)); gap: 8px; padding: 12px;
-                  border-top: 1px solid color-mix(in srgb, var(--primary-color) 35%, transparent);
-                  background: color-mix(in srgb, var(--primary-color) 5%, transparent);
-                  border-radius: 0 0 var(--ha-card-border-radius, 12px) var(--ha-card-border-radius, 12px);
-                  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--primary-color) 45%, transparent);
+          /* pannello rientrato rispetto ai bordi: le card sembrano "dentro" la stanza */
+          .kids { display: grid; grid-template-columns: repeat(${cols}, minmax(0, 1fr)); gap: 8px;
+                  margin: 10px 10px 10px 22px; padding: 8px;
+                  border-radius: calc(var(--ha-card-border-radius, 12px) - 2px);
+                  background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+                  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--primary-color) 45%, transparent);
                   --ha-card-box-shadow: none; }
           .head.nav { cursor: pointer; }
           .head:focus-visible { box-shadow: inset 0 0 0 2px var(--primary-color); border-radius: var(--ha-card-border-radius, 12px); }
@@ -172,6 +177,10 @@ class BagaHeadingCard extends HTMLElement {
       });
     }
     const wrap = this.querySelector(".wrap");
+    if (wrap && this._autoClose && !this._toggleEnt) {
+      // ogni tocco dentro le card interne fa ripartire il conto alla rovescia
+      for (const ev of ["pointerdown", "keydown", "wheel"]) wrap.addEventListener(ev, () => this._armClose(), { passive: true });
+    }
     if (wrap) {
       // a fine apertura il contenuto può uscire dai bordi (menu, tooltip delle tile)
       wrap.addEventListener("transitionend", ev => {
@@ -208,6 +217,7 @@ class BagaHeadingCard extends HTMLElement {
     const open = this._isOpen();
     if (open === this._open) return;
     this._open = open;
+    if (open) this._armClose(); else clearTimeout(this._closeTimer);
     const card = this.querySelector("ha-card");
     const head = this.querySelector(".head");
     card.classList.toggle("open", open);
@@ -218,6 +228,19 @@ class BagaHeadingCard extends HTMLElement {
     if (inner && !open) inner.classList.remove("shown");
     if (open && this._cards && !this._kids) this._makeKids();
   }
+
+  _armClose() {
+    clearTimeout(this._closeTimer);
+    if (!this._autoClose || this._toggleEnt || !this._open) return;
+    this._closeTimer = setTimeout(() => {
+      this._localOpen = false;
+      this._applyOpen();
+    }, this._autoClose * 1000);
+  }
+
+  disconnectedCallback() { clearTimeout(this._closeTimer); }
+
+  connectedCallback() { if (this._open) this._armClose(); }
 
   async _makeKids() {
     const gen = this._gen;
@@ -304,12 +327,10 @@ customElements.define("baga-heading-card", BagaHeadingCard);
 window.customCards = window.customCards || [];
 window.customCards.push({ type: "baga-heading-card", name: "Baga Heading", description: "Intestazione con badge di stato", preview: true });
 
-/* ---------- editor visuale ---------- */
+/*/* ---------- editor visuale ---------- */
 const EDITOR_SCHEMA = [
   { name: "title", selector: { text: {} } },
   { name: "icon", selector: { icon: {} } },
-  { name: "entity", selector: { entity: {} } },
-  { name: "tap_action", selector: { ui_action: {} } },
   {
     name: "entities",
     selector: {
@@ -325,17 +346,35 @@ const EDITOR_SCHEMA = [
       },
     },
   },
-  { name: "columns", selector: { number: { min: 1, max: 6, mode: "box" } } },
-  { name: "expanded", selector: { boolean: {} } },
+  {
+    name: "opening", type: "expandable", flatten: true, title: "Apertura delle card interne",
+    schema: [
+      { name: "columns", selector: { number: { min: 1, max: 6, mode: "box" } } },
+      { name: "auto_close", selector: { number: { min: 0, max: 3600, step: 5, mode: "box", unit_of_measurement: "s" } } },
+      { name: "expanded", selector: { boolean: {} } },
+    ],
+  },
+  {
+    name: "interactions", type: "expandable", flatten: true, title: "Azione al tocco (avanzate)",
+    schema: [
+      { name: "tap_action", selector: { ui_action: {} } },
+      { name: "entity", selector: { entity: {} } },
+    ],
+  },
 ];
 const EDITOR_LABELS = {
   title: "Titolo",
   icon: "Icona",
-  entity: "Entità della scheda (per toggle / dettagli al tocco)",
-  tap_action: "Azione al tocco sull'intestazione",
   entities: "Badge",
-  columns: "Colonne delle card interne (opzione cards: in YAML)",
-  expanded: "Card interne aperte all'avvio",
+  columns: "Colonne",
+  auto_close: "Chiudi da sola dopo N secondi senza tocchi (0 = mai)",
+  expanded: "Aperta all'avvio",
+  tap_action: "Azione al tocco sull'intestazione",
+  entity: "Entità della scheda (per toggle / dettagli al tocco)",
+};
+const EDITOR_HELPERS = {
+  tap_action: "Con le card interne lascia vuoto: il tocco apre e chiude. Con 'toggle' su un input_boolean lo stato "
+    + "aperto segue quell'entità (condiviso tra dispositivi; chiusura automatica e 'aperta all'avvio' non valgono).",
 };
 
 class BagaHeadingCardEditor extends HTMLElement {
@@ -356,24 +395,82 @@ class BagaHeadingCardEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (this._form) this._form.hass = hass;
+    if (this._stack) this._stack.hass = hass;
+  }
+
+  // passato da HA agli editor delle card: serve all'editor delle card interne
+  set lovelace(l) {
+    this._lovelace = l;
+    if (this._stack) this._stack.lovelace = l;
   }
 
   _render() {
     if (!this._form) {
       this._form = document.createElement("ha-form");
-      this._form.computeLabel = s => EDITOR_LABELS[s.name] || s.label || s.name;
-      this._form.addEventListener("value-changed", ev => this._changed(ev.detail.value));
+      this._form.computeLabel = s => EDITOR_LABELS[s.name] || s.title || s.label || s.name;
+      this._form.computeHelper = s => EDITOR_HELPERS[s.name];
+      this._form.addEventListener("value-changed", ev => {
+        ev.stopPropagation();
+        this._changed(ev.detail.value);
+      });
       this.appendChild(this._form);
+
+      const h = document.createElement("div");
+      h.textContent = "Card interne";
+      h.style.cssText = "margin:24px 0 8px;font-weight:500;font-size:1.05em;";
+      this.appendChild(h);
+      this._stackBox = document.createElement("div");
+      this._stackBox.textContent = "Caricamento dell'editor delle card…";
+      this.appendChild(this._stackBox);
+      this._loadStack();
     }
     this._form.hass = this._hass;
     this._form.schema = EDITOR_SCHEMA;
     this._form.data = this._config;
+    this._syncStack();
+  }
+
+  // riusa l'editor nativo delle pile (tab per card, selettore, sposta/duplica/elimina, editor di codice)
+  async _loadStack() {
+    try {
+      const helpers = await window.loadCardHelpers();
+      helpers.createCardElement({ type: "vertical-stack", cards: [] });
+      await customElements.whenDefined("hui-vertical-stack-card");
+      const ed = await customElements.get("hui-vertical-stack-card").getConfigElement();
+      ed.hass = this._hass;
+      if (this._lovelace) ed.lovelace = this._lovelace;
+      ed.addEventListener("config-changed", ev => {
+        ev.stopPropagation();
+        const cards = (ev.detail && ev.detail.config && ev.detail.config.cards) || [];
+        this._stackCards = JSON.stringify(cards);
+        this._changed({ ...this._config, cards });
+      });
+      // gli eventi interni dell'editor non devono arrivare all'editor di HA
+      ed.addEventListener("value-changed", ev => ev.stopPropagation());
+      this._stack = ed;
+      this._stackBox.textContent = "";
+      this._stackBox.appendChild(ed);
+      this._syncStack();
+    } catch (e) {
+      this._stackBox.textContent = "Editor delle card non disponibile: modifica 'cards:' nell'editor di codice.";
+    }
+  }
+
+  _syncStack() {
+    if (!this._stack) return;
+    const cards = this._config.cards || [];
+    const json = JSON.stringify(cards);
+    if (json === this._stackCards) return;   // già allineato: non perdere la tab selezionata
+    this._stackCards = json;
+    this._stack.setConfig({ type: "vertical-stack", cards });
   }
 
   _changed(value) {
     const c = { type: "custom:baga-heading-card", ...value };
     for (const k of ["title", "icon", "entity", "tap_action", "columns"]) if (c[k] === "" || c[k] == null) delete c[k];
     if (!c.expanded) delete c.expanded;
+    if (!c.auto_close) delete c.auto_close;
+    if (!Array.isArray(c.cards) || !c.cards.length) delete c.cards;
     c.entities = (c.entities || []).filter(e => e && e.entity).map(e => {
       const o = {};
       for (const [k, v] of Object.entries(e)) if (v !== "" && v != null && !(k === "hide_inactive" && v === false)) o[k] = v;

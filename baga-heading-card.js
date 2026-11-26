@@ -131,10 +131,10 @@ class BagaHeadingCard extends HTMLElement {
           ha-card.open:not(.hasbody) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
           /* corpo richiudibile (opzione cards:) */
           .wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
-          ha-card.open .wrap { grid-template-rows: 1fr; }
+          ha-card.open > .wrap { grid-template-rows: 1fr; }
           .inner { min-height: 0; overflow: hidden; }
           .inner.shown { overflow: visible; }
-          ha-card:not(.open) .inner { visibility: hidden; transition: visibility 0s .25s; }
+          ha-card:not(.open) > .wrap > .inner { visibility: hidden; transition: visibility 0s .25s; }
           /* pannello rientrato rispetto ai bordi: le card sembrano "dentro" la stanza */
           .kids { display: grid; gap: 8px;
                   margin: 10px; padding: 8px;
